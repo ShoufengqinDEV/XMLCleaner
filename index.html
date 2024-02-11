@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload and clean XML File</title>
+	<style>
+		ul {
+			list-style-type : none;
+		}
+		
+		body{
+			margin: 0;
+			padding: 0;
+			background-color: #f0f0f0;
+		}
+		
+		div {
+			font-family: Arial, sans-serif;
+			display: flex;
+			flex-direction: column;
+			align-items: center;
+			justify-content: center;
+		}
+
+		h1 {
+			color: #333;
+		}
+
+		input[type="file"] {
+			margin-bottom: 10px;
+		}
+
+		button {
+			background-color: #4CAF50;
+			color: white;
+			padding: 10px 20px;
+			border: none;
+			border-radius: 5px;
+			cursor: pointer;
+		}
+
+		button:hover {
+			background-color: #45a049;
+		}
+
+		ul {
+			list-style-type: none;
+			margin-right : 20px;
+		}
+
+		li {
+			background-color: #fff;
+			border-radius: 5px;
+		}
+	</style>
+</head>
+<body>
+	<div>
+		<h1>Clean XML file</h1>
+		<input type="file" id="fileInput" accept=".xml" onchange="readFile()">
+		<br>
+		<button onclick="downloadXmlFromString(xmlSelector.toString(), 'data.xml')">Downlaod XML file clean</button>
+		<br>
+	</div>
+	<ul>
+		<li id='result'></li>
+	</ul>
+    <script>
+		const Status = {
+			UNCHECKED : 'UNCHECKED',
+			HALFCHECKED : 'HALFCHECKED',
+			FULLCHECKED : 'FULLCHECKED'
+		}
+		
+		class XmlSelector {
+			constructor(node, parent){
+					this.node = node;
+					this.parent = parent;
+					this.checked = Status.FULLCHECKED;
+					const idParent = parent == null ? null : parent.id;
+					const pos = parent == null ? 0 : parent.childs.length;
+					this.id = idParent == null ? pos : idParent + '_' + pos;
+					this.deep = parent == null ? 0 : parent.deep + 1;
+					this.childs = [];
+			}
+			pushChild(child){
+				this.childs.push(child);
+			}
+			checkUncheck(){
+				if (this.checked == Status.HALFCHECKED || this.checked == Status.UNCHECKED){
+					this.check();
+					if (this.parent != null)
+						this.parent.verifyFullChecked();
+				}else if (this.checked == Status.FULLCHECKED){
+					this.uncheck();
+					if (this.parent != null)
+						this.parent.verifyFullUnchecked();
+				}
+			}
+			
+			check(){
+				this.checked = Status.FULLCHECKED;
+				this.updateCheckbox();
+				for (let i = 0; i < this.childs.length; i++){
+					this.childs[i].check();
+				}
+				
+			}
+			
+			uncheck(){
+				this.checked = Status.UNCHECKED;
+				this.updateCheckbox();
+				for (let i = 0; i < this.childs.length; i++){
+					this.childs[i].uncheck();
+				}
+			}
+			
+			verifyFullChecked(){
+				if (this.checked == Status.FULLCHECKED)
+					return;
+				for (let i = 0; i < this.childs.length; i++){
+					if (this.childs[i].checked != Status.FULLCHECKED){
+						this.checked = Status.HALFCHECKED;
+						this.updateCheckbox();
+						if (this.parent != null)
+							this.parent.verifyFullChecked();
+						return;
+					}
+				}
+				this.checked = Status.FULLCHECKED;
+				this.updateCheckbox();
+				if (this.parent != null)
+						this.parent.verifyFullChecked();
+			}
+			
+			verifyFullUnchecked(){
+				if (this.checked == Status.UNCHECKED)
+					return;
+				for (let i = 0; i < this.childs.length; i++){
+					if (this.childs[i].checked != Status.UNCHECKED){
+						this.checked = Status.HALFCHECKED;
+						this.updateCheckbox();
+						if (this.parent != null)
+							this.parent.verifyFullUnchecked();
+						return;
+					}
+				}
+				this.checked = Status.UNCHECKED;
+				this.updateCheckbox();
+				if (this.parent != null)
+					this.parent.verifyFullUnchecked();
+			}
+			
+			updateCheckbox(){
+				const checkbox = document.getElementById("checkbox_" + this.id);
+				if (checkbox == null)
+					return;
+				if (this.checked == Status.FULLCHECKED){
+					checkbox.checked = true;
+					checkbox.indeterminate = false;
+				}else if (this.checked == Status.HALFCHECKED){
+					checkbox.checked = false;
+					checkbox.indeterminate = true;
+				}else {
+					checkbox.checked = false;
+					checkbox.indeterminate = false;
+				}
+			}
+			
+			toString(){
+				if (this.checked == Status.UNCHECKED)
+					return null;
+				let result = '';
+				const tabStr = this.deepTab();
+				if (this.node.nodeType === Node.ELEMENT_NODE){
+					result = tabStr + '<' + this.node.nodeName;
+					for (let i = 0; i < this.node.attributes.length; i++){
+						result += ' ' + this.node.attributes[i].name + '=' + '"' + this.node.attributes[i].value + '"';
+					}
+					if (this.childs.length == 0){
+						result += '/>';
+						return result;
+					}else{
+						result += '>';
+						let addElement = false;
+						for (let i = 0; i < this.childs.length; i++){
+							const childResult = this.childs[i].toString();
+							if (childResult != null){
+								result+= '\n' + childResult;
+								addElement = true;
+							}
+						}
+						if (addElement){
+							result += '\n';
+						}
+						result += tabStr + '</' + this.node.nodeName + '>';
+					}
+				} else if (this.node.nodeType === Node.TEXT_NODE) {
+					result = tabStr + this.node.nodeValue.trim();
+				}
+				return result;
+			}
+			
+			deepTab(){
+				let result = '';
+				for (let i = 0; i < this.deep; i++){
+					result += '\t';
+				}
+				return result;
+			}
+		}
+	
+	
+        function readFile() {
+            const fileInput = document.getElementById('fileInput');
+            const file = fileInput.files[0];
+
+            if (file) {
+                const reader = new FileReader();
+
+                reader.onload = function(event) {
+                    fileContent = event.target.result;
+                    //document.getElementById('fileContent').value = fileContent;
+					interpretXML(fileContent);
+                };
+
+                reader.readAsText(file);
+            } else {
+                alert('Veuillez sélectionner un fichier texte.');
+            }
+        }
+		
+		xmlSelector = null;
+		function interpretXML(fileContent) {
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(fileContent, 'text/xml');
+
+            if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
+                console.error('Erreur lors de l\'interprétation du XML : ' + xmlDoc.getElementsByTagName('parsererror')[0].innerHTML);
+                return;
+            }
+			
+			xmlSelector = initializeXmlSelector(xmlDoc.documentElement, null);
+			document.getElementById("result").innerHTML = '';
+            displayXmlSelector(xmlSelector, document.getElementById("result"));
+        }
+		
+		function initializeXmlSelector(node, parent){
+			if (node.nodeType === Node.TEXT_NODE && node.nodeValue.trim() === '')
+                return null;
+			const current = new XmlSelector(node, parent);
+			for (let i = 0; i < node.childNodes.length; i++) {
+				let child = initializeXmlSelector(node.childNodes[i], current);
+				if (child != null)
+					current.pushChild(child);
+			}
+			return current;
+		}
+		
+		function displayXmlSelector(xmlSelect, parentElement) {
+            const node = xmlSelect.node;
+			if (node.nodeType === Node.ELEMENT_NODE) {
+				let title = '<' + node.nodeName;
+				for (let i = 0; i < node.attributes.length; i++){
+					title += ' ' + node.attributes[i].name + '=' + '"' + node.attributes[i].value + '"';
+				}
+
+                const ul = document.createElement('ul');
+                for (let i = 0; i < xmlSelect.childs.length; i++) {
+                    const li = document.createElement('li');
+                    displayXmlSelector(xmlSelect.childs[i], li);
+					ul.appendChild(li);
+                }
+				const checkbox = document.createElement('input');
+				checkbox.type = 'checkbox';
+				checkbox.id = 'checkbox_' + xmlSelect.id;
+				checkbox.checked = true;
+				checkbox.onchange = function(){xmlSelect.checkUncheck();};
+				
+				if (xmlSelect.childs.length > 0){
+					title += '>';
+					const details = document.createElement('details');
+					const summary = document.createElement('summary');
+					const spanTitle = document.createElement('span');
+					spanTitle.textContent = title;
+					summary.appendChild(checkbox);
+					summary.appendChild(spanTitle);
+					details.appendChild(summary);
+					details.appendChild(ul);
+					const span = document.createElement('span');
+					span.textContent = '</' + node.nodeName + '>';
+					details.appendChild(span);
+					
+					parentElement.appendChild(details);
+				}else{
+					parentElement.appendChild(checkbox);
+					title += ' />';
+					const span = document.createElement('span');
+					span.textContent = title;
+					parentElement.appendChild(span);
+				}
+            } else if (node.nodeType === Node.TEXT_NODE) {
+                const text = node.nodeValue.trim();
+				const span = document.createElement('span');
+				span.textContent = text;
+				parentElement.appendChild(span);
+            }
+        }
+		
+		function downloadXmlFromString(data, fileName) {
+			// Créer un objet Blob à partir de la chaîne XML
+			var blob = new Blob([data], { type: 'text/xml' });
+
+			// Créer un objet URL à partir du Blob
+			var url = window.URL.createObjectURL(blob);
+
+			// Créer un élément <a> pour le téléchargement
+			var a = document.createElement('a');
+			a.href = url;
+			a.download = fileName;
+
+			// Ajouter l'élément <a> à la page
+			document.body.appendChild(a);
+
+			// Simuler un clic sur l'élément <a> pour déclencher le téléchargement
+			a.click();
+
+			// Retirer l'élément <a> de la page
+			document.body.removeChild(a);
+
+			// Libérer l'URL
+			window.URL.revokeObjectURL(url);
+		}
+    </script>
+</body>
+</html>
