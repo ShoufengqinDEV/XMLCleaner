@@ -43,6 +43,14 @@
 		button:hover {
 			background-color: #45a049;
 		}
+		
+		button:disabled{
+			background-color: #d4d7d6;
+		}
+		
+		button:disabled:hover{
+			cursor:default;
+		}
 
 		ul {
 			list-style-type: none;
@@ -53,14 +61,23 @@
 			background-color: #fff;
 			border-radius: 5px;
 		}
+		
+		#error {
+			background-color: #ffc6c7;
+		}
+		
+		#error h3 {
+			font-size:14px;
+		}
 	</style>
 </head>
 <body>
+	<div id="error"></div>
 	<div>
 		<h1>Clean XML file</h1>
-		<input type="file" id="fileInput" accept=".xml" onchange="readFile()">
+		<input type="file" id="fileInput" accept=".xml" onclick="clearFile()" onchange="readFile()">
 		<br>
-		<button onclick="downloadXmlFromString(xmlSelector.toString(), 'data.xml')">Downlaod XML file clean</button>
+		<button id="download" onclick="downloadXmlFromString(xmlSelector.toString(), 'data.xml')">Downlaod XML file clean</button>
 		<br>
 	</div>
 	<ul>
@@ -231,6 +248,10 @@
 			}
 		}
 	
+		function clearFile() {
+			document.getElementById('fileInput').value = '';
+		}
+	
         function readFile() {
             const fileInput = document.getElementById('fileInput');
             const file = fileInput.files[0];
@@ -251,18 +272,25 @@
         }
 		
 		xmlSelector = null;
-		xmlDoc = null;
 		function interpretXML(fileContent) {
             const parser = new DOMParser();
-            xmlDoc = parser.parseFromString(fileContent, 'text/xml');
+            const xmlDoc = parser.parseFromString(fileContent, 'text/xml');
+			document.getElementById("result").innerHTML = '';
+			document.getElementById("download").disabled=true;
+			xmlSelector = null;
 
             if (xmlDoc.getElementsByTagName('parsererror').length > 0) {
-                console.error('Erreur lors de l\'interprétation du XML : ' + xmlDoc.getElementsByTagName('parsererror')[0].innerHTML);
-                return;
-            }
+				let strError = "";
+				for (let i = 0; i < xmlDoc.getElementsByTagName('parsererror').length; i++){
+					strError += xmlDoc.getElementsByTagName('parsererror')[i].innerHTML + "<br/>";
+				}
+                document.getElementById("error").innerHTML = strError;
+				return;
+            }else{
+				document.getElementById("error").innerHTML = "";
+			}
 			
 			xmlSelector = initializeXmlSelector(xmlDoc.documentElement, null);
-			document.getElementById("result").innerHTML = '';
             displayXmlSelector(xmlSelector, document.getElementById("result"));
         }
 		
@@ -331,6 +359,9 @@
 				span.textContent = text;
 				parentElement.appendChild(span);
             }
+			if (parentElement.id === 'result'){
+				document.getElementById("download").disabled=false;
+			}
         }
 		
 		function downloadXmlFromString(data, fileName) {
@@ -357,6 +388,7 @@
 			// Libérer l'URL
 			window.URL.revokeObjectURL(url);
 		}
+		document.getElementById("download").disabled=true;
     </script>
 </body>
 </html>
