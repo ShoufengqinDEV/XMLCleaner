@@ -236,7 +236,7 @@
 
 		function encodeCharSpecial(str, addQuote = false){
 			if (!isCDATA(str)){
-				str = str.replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/&/g, "&amp;");
+				str = str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 				if (addQuote){
 					str = str.replace(/"/g, "&quot;");
 				}
